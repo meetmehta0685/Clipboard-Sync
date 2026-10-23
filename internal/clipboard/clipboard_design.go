@@ -3,8 +3,10 @@
 package clipboard
 
 import (
+	"context"
 	"errors"
 	"sync"
+	"time"
 
 	xclip "golang.design/x/clipboard"
 )
@@ -27,12 +29,32 @@ func newDesign() (*designClipboard, error) {
 	return &designClipboard{}, nil
 }
 
+// timeout bounds each clipboard call; X11 selection owners can stall.
+const timeout = 2 * time.Second
+
+func (d *designClipboard) read(f xclip.Format) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	b, err := xclip.Read(ctx, f)
+	if errors.Is(err, xclip.ErrNoData) {
+		return nil, nil
+	}
+	return b, err
+}
+
 func (d *designClipboard) Read() (Content, error) {
 	concealed := d.concealed != nil && d.concealed()
-	if b := xclip.Read(xclip.FmtText); len(b) > 0 {
+	b, err := d.read(xclip.FmtText)
+	if err != nil {
+		return Content{}, err
+	}
+	if len(b) > 0 {
 		return Content{Type: Text, Data: b, Concealed: concealed}, nil
 	}
-	if b := xclip.Read(xclip.FmtImage); len(b) > 0 {
+	if b, err = d.read(xclip.FmtImage); err != nil {
+		return Content{}, err
+	}
+	if len(b) > 0 {
 		png, err := NormalizeImage(b)
 		if err != nil {
 			return Content{}, err
@@ -43,15 +65,18 @@ func (d *designClipboard) Read() (Content, error) {
 }
 
 func (d *designClipboard) Write(c Content) error {
+	f := xclip.FmtText
 	switch c.Type {
 	case Text:
-		xclip.Write(xclip.FmtText, c.Data)
 	case Image:
-		xclip.Write(xclip.FmtImage, c.Data)
+		f = xclip.FmtImage
 	default:
 		return errors.New("clipboard: can only write text or images")
 	}
-	return nil
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	_, err := xclip.Write(ctx, f, c.Data)
+	return err
 }
 
 // designCounted adds a ChangeCounter when the platform has one.
