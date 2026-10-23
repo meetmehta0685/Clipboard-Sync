@@ -10,7 +10,8 @@ import { toPng } from "../lib/image.ts";
 import { forget } from "../lib/state.ts";
 import type { Clip, SyncClient } from "../lib/sync.ts";
 
-const MAX_BYTES = 25 * 1024 * 1024;
+// Matches the desktop default (max_clip_bytes), minus room for the header.
+const MAX_BYTES = 25 * 1024 * 1024 - 64 * 1024;
 
 export default function Home() {
   const { saved, client } = useSync();
@@ -112,7 +113,7 @@ function Book({ client }: { client: SyncClient }) {
         const items = await navigator.clipboard.read();
         for (const item of items) {
           const img = item.types.find((t) => t.startsWith("image/"));
-          if (img) return sent(client.publish("image", await toPng(await item.getType(img))));
+          if (img) return sent(client.publish("image", await toPng(await item.getType(img), MAX_BYTES)));
           if (item.types.includes("text/plain")) {
             const text = await (await item.getType("text/plain")).text();
             if (text.trim()) return sent(client.sendText(text));
@@ -131,9 +132,10 @@ function Book({ client }: { client: SyncClient }) {
   }
 
   async function attach(file: File) {
-    if (file.size > MAX_BYTES) return setProblem(`That file is ${(file.size / 1048576).toFixed(0)} MB. The limit is 25 MB.`);
+    // Photos are shrunk to fit; other files must already be under the limit.
+    if (!file.type.startsWith("image/") && file.size > MAX_BYTES) return setProblem(`That file is ${(file.size / 1048576).toFixed(0)} MB. The limit is 25 MB.`);
     try {
-      if (file.type.startsWith("image/")) sent(client.publish("image", await toPng(file)));
+      if (file.type.startsWith("image/")) sent(client.publish("image", await toPng(file, MAX_BYTES)));
       else sent(client.publish("file", new Uint8Array(await file.arrayBuffer()), file.name));
     } catch (e) {
       setProblem((e as Error).message);
