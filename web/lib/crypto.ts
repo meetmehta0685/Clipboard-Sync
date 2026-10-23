@@ -161,3 +161,15 @@ export function equal(a: Uint8Array, b: Uint8Array): boolean {
 
 export const REKEY_INFO = "clipsync rekey v1";
 export const WELCOME_INFO = "clipsync pair welcome v1";
+
+/**
+ * Random v4 UUID. crypto.randomUUID only exists in secure contexts (HTTPS or
+ * localhost), but the app must also work over plain http on a home network.
+ */
+export function uuid(): string {
+  const b = randomBytes(16);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = bytesToHex(b);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}

@@ -1,6 +1,6 @@
 // Persistent phone state in localStorage. The identity key never leaves the
 // device; the group key arrives sealed to it during pairing.
-import { GroupKey, identityFrom, newIdentity, type Identity } from "./crypto.ts";
+import { GroupKey, identityFrom, newIdentity, uuid, type Identity } from "./crypto.ts";
 import { b64decode, b64encode, decode, encode, type Device } from "./protocol.ts";
 
 const KEY = "clipsync:v1";
@@ -54,7 +54,7 @@ export function load(): Saved {
     }
   }
   const id = newIdentity();
-  const s: Saved = { deviceId: crypto.randomUUID(), name: defaultName(), priv: b64encode(id.priv), devices: [], gen: "", seq: 0, clock: 0 };
+  const s: Saved = { deviceId: uuid(), name: defaultName(), priv: b64encode(id.priv), devices: [], gen: "", seq: 0, clock: 0 };
   save(s);
   return s;
 }

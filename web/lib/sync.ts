@@ -1,6 +1,6 @@
 // Browser port of the sync engine (internal/engine), trimmed to what a phone
 // needs: receive, send on demand, chunking, dedupe, Lamport ordering, rekey.
-import { CHUNK_SIZE, equal, openFrom, REKEY_INFO, type GroupKey } from "./crypto.ts";
+import { CHUNK_SIZE, equal, openFrom, REKEY_INFO, uuid, type GroupKey } from "./crypto.ts";
 import { decode, encode, type Chunk, type Device, type Envelope, type Message } from "./protocol.ts";
 import { groupKey, identity, loadHistory, relayUrl, save, saveHistory, setGroup, type Saved, type StoredClip } from "./state.ts";
 
@@ -266,7 +266,7 @@ export class SyncClient extends EventTarget {
     save(this.s); // pull in a newer clock another tab may have stored
     this.s.clock += 1;
     save(this.s);
-    const env = { id: crypto.randomUUID(), origin: this.s.deviceId, clock: this.s.clock, type, sent: Date.now() } as Envelope;
+    const env = { id: uuid(), origin: this.s.deviceId, clock: this.s.clock, type, sent: Date.now() } as Envelope;
     const chunks = g.sealClip(env, plain, CHUNK_SIZE);
     this.seen.add(env.id);
     this.outbox.set(env.id, chunks);
