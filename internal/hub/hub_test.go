@@ -13,7 +13,7 @@ import (
 	"github.com/meetmehta/clipsync/internal/transport/relay"
 )
 
-const room = "0123456789abcdef0123456789abcdef"
+const testRoom = "0123456789abcdef0123456789abcdef"
 
 var token = []byte("0123456789abcdef-token")
 
@@ -54,11 +54,11 @@ func TestBroadcastAndCatchUp(t *testing.T) {
 	url, _ := server(t)
 	ctx := context.Background()
 
-	a := dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "a"})
+	a := dial(t, url, &protocol.Hello{Room: testRoom, Token: token, Device: "a"})
 	if m := recv(t, a); m.Kind != protocol.KindReady || m.Gen == "" {
 		t.Fatalf("want ready with generation, got %+v", m)
 	}
-	b := dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "b"})
+	b := dial(t, url, &protocol.Hello{Room: testRoom, Token: token, Device: "b"})
 	gen := recv(t, b).Gen
 
 	_ = a.Send(ctx, clip("c1", 1))
@@ -76,7 +76,7 @@ func TestBroadcastAndCatchUp(t *testing.T) {
 	_ = a.Send(ctx, clip("c3", 2))
 	time.Sleep(50 * time.Millisecond)
 
-	b2 := dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "b", Gen: gen, Since: 1})
+	b2 := dial(t, url, &protocol.Hello{Room: testRoom, Token: token, Device: "b", Gen: gen, Since: 1})
 	got := []string{}
 	for {
 		m := recv(t, b2)
@@ -90,7 +90,7 @@ func TestBroadcastAndCatchUp(t *testing.T) {
 	}
 
 	// A cursor from an older relay generation replays everything stored.
-	b3 := dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "b", Gen: "stale", Since: 99})
+	b3 := dial(t, url, &protocol.Hello{Room: testRoom, Token: token, Device: "b", Gen: "stale", Since: 99})
 	m = recv(t, b3)
 	if m.Kind != protocol.KindClip || m.Clip.ID != "c1" {
 		t.Fatalf("stale generation should replay from the start, got %+v", m)
@@ -102,9 +102,9 @@ func TestBroadcastAndCatchUp(t *testing.T) {
 
 func TestWrongTokenRejected(t *testing.T) {
 	url, _ := server(t)
-	dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "a"})
+	dial(t, url, &protocol.Hello{Room: testRoom, Token: token, Device: "a"})
 	time.Sleep(20 * time.Millisecond)
-	bad := dial(t, url, &protocol.Hello{Room: room, Token: []byte("someone-elses-token"), Device: "x"})
+	bad := dial(t, url, &protocol.Hello{Room: testRoom, Token: []byte("someone-elses-token"), Device: "x"})
 	m := recv(t, bad)
 	if m.Kind != protocol.KindError || !strings.Contains(m.Error, "token") {
 		t.Fatalf("want token error, got %+v", m)
@@ -114,13 +114,13 @@ func TestWrongTokenRejected(t *testing.T) {
 func TestNeedAnsweredFromStorage(t *testing.T) {
 	url, _ := server(t)
 	ctx := context.Background()
-	a := dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "a"})
+	a := dial(t, url, &protocol.Hello{Room: testRoom, Token: token, Device: "a"})
 	recv(t, a)
 	_ = a.Send(ctx, clip("big", 1))
 	_ = a.Send(ctx, &protocol.Message{Kind: protocol.KindChunk, Chunk: &protocol.Chunk{ID: "big", Index: 1, Payload: []byte("one")}})
 	time.Sleep(50 * time.Millisecond)
 
-	b := dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "b", Gen: "x", Since: 0})
+	b := dial(t, url, &protocol.Hello{Room: testRoom, Token: token, Device: "b", Gen: "x", Since: 0})
 	for recv(t, b).Kind != protocol.KindReady {
 	}
 	_ = b.Send(ctx, &protocol.Message{Kind: protocol.KindNeed, Need: &protocol.Need{ID: "big", Indexes: []int{1}, From: "b"}})
@@ -132,7 +132,7 @@ func TestNeedAnsweredFromStorage(t *testing.T) {
 
 func TestPairRoomLimits(t *testing.T) {
 	url, _ := server(t)
-	pr := "pair-" + room
+	pr := "pair-" + testRoom
 	a := dial(t, url, &protocol.Hello{Room: pr, Pair: true})
 	recv(t, a)
 	dial(t, url, &protocol.Hello{Room: pr, Pair: true})
@@ -150,13 +150,13 @@ func TestHistoryBounded(t *testing.T) {
 	srv := httptest.NewServer(h)
 	defer srv.Close()
 	url := "ws" + strings.TrimPrefix(srv.URL, "http")
-	a := dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "a"})
+	a := dial(t, url, &protocol.Hello{Room: testRoom, Token: token, Device: "a"})
 	recv(t, a)
 	for i := range 10 {
 		_ = a.Send(context.Background(), clip(string(rune('a'+i)), uint64(i)))
 	}
 	time.Sleep(50 * time.Millisecond)
-	b := dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "b"})
+	b := dial(t, url, &protocol.Hello{Room: testRoom, Token: token, Device: "b"})
 	n := 0
 	for recv(t, b).Kind != protocol.KindReady {
 		n++
