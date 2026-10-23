@@ -3,6 +3,7 @@ module github.com/meetmehta/clipsync
 go 1.27.3
 
 require (
+	fyne.io/systray v1.12.2
 	github.com/coder/websocket v1.8.15
 	github.com/flynn/noise v1.1.0
 	github.com/google/uuid v1.6.0
@@ -14,6 +15,7 @@ require (
 	golang.org/x/image v0.47.0
 	golang.org/x/time v0.16.0
 	modernc.org/sqlite v1.61.0
+	rsc.io/qr v0.2.0
 )
 
 require (
@@ -35,5 +37,4 @@ require (
 	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
-	rsc.io/qr v0.2.0 // indirect
 )

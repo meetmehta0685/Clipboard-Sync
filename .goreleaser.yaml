@@ -1,0 +1,39 @@
+# Relay binaries for every platform, plus the natively built desktop
+# archives from the release workflow. The Homebrew formula is rendered from
+# packaging/homebrew/clipsync.rb.tmpl by the release workflow.
+version: 2
+
+project_name: clipsync
+
+builds:
+  - id: relay
+    main: ./cmd/relay
+    binary: clipsync-relay
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: ["-s -w"]
+
+archives:
+  - id: relay
+    ids: [relay]
+    name_template: "clipsync-relay_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+release:
+  extra_files:
+    - glob: ./desktop/*
+
+checksum:
+  name_template: checksums.txt
+  extra_files:
+    - glob: ./desktop/*
+
+changelog:
+  use: github
+  filters:
+    exclude: ["^docs:", "^test:"]

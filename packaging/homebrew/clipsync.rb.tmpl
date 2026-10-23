@@ -1,0 +1,32 @@
+# Rendered by .github/workflows/release.yml into meetmehta/homebrew-tap.
+class Clipsync < Formula
+  desc "End-to-end encrypted clipboard sync between your devices"
+  homepage "https://github.com/meetmehta/clipsync"
+  version "{{VERSION}}"
+
+  depends_on :macos
+
+  on_arm do
+    url "https://github.com/meetmehta/clipsync/releases/download/v{{VERSION}}/clipsync_{{VERSION}}_darwin_arm64.tar.gz"
+    sha256 "{{SHA_ARM64}}"
+  end
+  on_intel do
+    url "https://github.com/meetmehta/clipsync/releases/download/v{{VERSION}}/clipsync_{{VERSION}}_darwin_amd64.tar.gz"
+    sha256 "{{SHA_AMD64}}"
+  end
+
+  def install
+    bin.install "clipsyncd", "clipsync-tray"
+  end
+
+  service do
+    run [opt_bin/"clipsyncd", "run"]
+    keep_alive true
+    log_path var/"log/clipsyncd.log"
+    error_log_path var/"log/clipsyncd.log"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/clipsyncd version")
+  end
+end

@@ -92,7 +92,9 @@ func TestFilter(t *testing.T) {
 	}
 }
 
-func text(s string) clipboard.Content { return clipboard.Content{Type: clipboard.Text, Data: []byte(s)} }
+func text(s string) clipboard.Content {
+	return clipboard.Content{Type: clipboard.Text, Data: []byte(s)}
+}
 
 func TestRemoteWriteDoesNotEatUnseenLocalCopy(t *testing.T) {
 	cb := clipboard.NewMemory()

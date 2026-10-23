@@ -1,0 +1,78 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  # The desktop daemon needs cgo for the clipboard, so each OS builds natively.
+  desktop:
+    strategy:
+      matrix:
+        include:
+          - { os: macos-latest, goos: darwin, goarch: arm64 }
+          - { os: macos-13, goos: darwin, goarch: amd64 }
+          - { os: ubuntu-latest, goos: linux, goarch: amd64 }
+          - { os: windows-latest, goos: windows, goarch: amd64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libx11-dev libayatana-appindicator3-dev
+      - name: Build
+        shell: bash
+        run: |
+          ext=""; [ "${{ matrix.goos }}" = windows ] && ext=".exe"
+          out="clipsync_${GITHUB_REF_NAME#v}_${{ matrix.goos }}_${{ matrix.goarch }}"
+          mkdir -p "dist/$out"
+          ldflags="-s -w -X main.version=${GITHUB_REF_NAME#v}"
+          go build -trimpath -ldflags="$ldflags" -o "dist/$out/clipsyncd$ext" ./cmd/clipsyncd
+          go build -trimpath -ldflags="$ldflags" -o "dist/$out/clipsync-tray$ext" ./cmd/clipsync-tray
+          cp README.md "dist/$out/"
+          cd dist && if [ "${{ matrix.goos }}" = windows ]; then 7z a "$out.zip" "$out"; else tar czf "$out.tar.gz" "$out"; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*.*z*
+
+  # The relay is pure Go: GoReleaser cross-compiles it and publishes the
+  # release with the desktop archives. Then the Homebrew tap is updated.
+  release:
+    needs: desktop
+    runs-on: ubuntu-latest
+    env:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v4
+        with:
+          path: desktop
+          merge-multiple: true
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update Homebrew tap
+        if: env.HOMEBREW_TAP_TOKEN != ''
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          arm=$(sha256sum "desktop/clipsync_${v}_darwin_arm64.tar.gz" | cut -d' ' -f1)
+          amd=$(sha256sum "desktop/clipsync_${v}_darwin_amd64.tar.gz" | cut -d' ' -f1)
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/meetmehta/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          sed -e "s/{{VERSION}}/$v/g" -e "s/{{SHA_ARM64}}/$arm/" -e "s/{{SHA_AMD64}}/$amd/" \
+            packaging/homebrew/clipsync.rb.tmpl > tap/Formula/clipsync.rb
+          cd tap && git config user.name "clipsync release" && git config user.email "release@users.noreply.github.com"
+          git add Formula/clipsync.rb && git commit -m "clipsync $v" && git push
