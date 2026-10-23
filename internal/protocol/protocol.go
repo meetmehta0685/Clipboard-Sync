@@ -135,6 +135,7 @@ type Rekey struct {
 type PairHello struct {
 	Device string `json:"device"`
 	Name   string `json:"name"`
+	Kind   string `json:"kind"` // "desktop" | "phone"
 	Pub    []byte `json:"pub"`
 	MAC    []byte `json:"mac"` // HMAC(code, ...) proves it saw the QR code
 }

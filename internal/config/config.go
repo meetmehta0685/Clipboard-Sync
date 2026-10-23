@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -356,3 +358,76 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 
 // D returns the value as a time.Duration.
 func (d Duration) D() time.Duration { return time.Duration(d) }
+
+// Keys accepted by Set, for help text.
+var SettableKeys = []string{"name", "relay_url", "lan", "lan_port", "sync_images", "filter_secrets",
+	"max_clip_bytes", "history_limit", "history_ttl", "poll_interval", "download_dir"}
+
+// Set changes one setting by name from a string value. f is left untouched
+// if the value is invalid.
+func Set(f *File, key, value string) error {
+	nf := *f
+	if err := set(&nf, key, value); err != nil {
+		return err
+	}
+	*f = nf
+	return nil
+}
+
+func set(f *File, key, value string) error {
+	parseBool := func() (bool, error) {
+		switch strings.ToLower(value) {
+		case "true", "on", "yes", "1":
+			return true, nil
+		case "false", "off", "no", "0":
+			return false, nil
+		}
+		return false, fmt.Errorf("%s: want true or false", key)
+	}
+	var err error
+	s := &f.Settings
+	switch key {
+	case "name":
+		f.Name = value
+	case "relay_url":
+		if value != "" && !strings.HasPrefix(value, "ws://") && !strings.HasPrefix(value, "wss://") {
+			return errors.New("relay_url must start with ws:// or wss://")
+		}
+		s.RelayURL = value
+	case "lan":
+		s.LAN, err = parseBool()
+	case "sync_images":
+		s.SyncImages, err = parseBool()
+	case "filter_secrets":
+		s.FilterSecrets, err = parseBool()
+	case "lan_port":
+		s.LANPort, err = strconv.Atoi(value)
+	case "history_limit":
+		s.HistoryLimit, err = strconv.Atoi(value)
+	case "max_clip_bytes":
+		s.MaxClipBytes, err = strconv.ParseInt(value, 10, 64)
+	case "history_ttl", "poll_interval":
+		var d time.Duration
+		if d, err = time.ParseDuration(value); err == nil {
+			if key == "history_ttl" {
+				s.HistoryTTL = Duration(d)
+			} else {
+				s.PollInterval = Duration(d)
+			}
+		}
+	case "download_dir":
+		s.DownloadDir = value
+	default:
+		return fmt.Errorf("unknown setting %q (have: %s)", key, strings.Join(SettableKeys, ", "))
+	}
+	return err
+}
+
+// File returns a copy of the on-disk config.
+func (s *State) File() File {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	f := s.file
+	f.Devices = slices.Clone(f.Devices)
+	return f
+}
