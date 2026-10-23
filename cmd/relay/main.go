@@ -81,10 +81,14 @@ func spa(dir string) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		p := filepath.Clean("/" + r.URL.Path)
-		if _, err := os.Stat(filepath.Join(dir, p)); err != nil {
-			if _, err := os.Stat(filepath.Join(dir, p+".html")); err == nil {
-				r.URL.Path = p + ".html"
-			} else {
+		// Next exports both pair.html and a pair/ directory of RSC data;
+		// the page wins, served directly so FileServer doesn't redirect.
+		if p != "/" {
+			if page := filepath.Join(dir, p+".html"); fileExists(page) {
+				http.ServeFile(w, r, page)
+				return
+			}
+			if _, err := os.Stat(filepath.Join(dir, p)); err != nil {
 				r.URL.Path = "/"
 			}
 		}
@@ -93,4 +97,9 @@ func spa(dir string) http.Handler {
 		}
 		fs.ServeHTTP(w, r)
 	})
+}
+
+func fileExists(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && !fi.IsDir()
 }
