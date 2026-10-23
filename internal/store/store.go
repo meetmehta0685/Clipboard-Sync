@@ -13,7 +13,7 @@ import (
 
 	_ "modernc.org/sqlite" // pure-Go driver, no cgo needed
 
-	"github.com/meetmehta/clipsync/internal/crypto"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/crypto"
 )
 
 // Clip is one history entry.

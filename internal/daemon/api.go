@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/meetmehta/clipsync/internal/clipboard"
-	"github.com/meetmehta/clipsync/internal/config"
-	"github.com/meetmehta/clipsync/internal/pairing"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/clipboard"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/config"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/pairing"
 )
 
 // HistoryItem is a history entry as returned by the API.

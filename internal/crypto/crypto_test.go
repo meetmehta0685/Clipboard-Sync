@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/meetmehta/clipsync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
 )
 
 func newEnv() *protocol.Envelope {

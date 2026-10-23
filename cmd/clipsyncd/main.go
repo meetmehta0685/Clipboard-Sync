@@ -21,13 +21,13 @@ import (
 
 	"github.com/mdp/qrterminal/v3"
 
-	"github.com/meetmehta/clipsync/internal/client"
-	"github.com/meetmehta/clipsync/internal/clipboard"
-	"github.com/meetmehta/clipsync/internal/config"
-	"github.com/meetmehta/clipsync/internal/daemon"
-	"github.com/meetmehta/clipsync/internal/engine"
-	"github.com/meetmehta/clipsync/internal/keystore"
-	"github.com/meetmehta/clipsync/internal/pairing"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/client"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/clipboard"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/config"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/daemon"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/engine"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/keystore"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/pairing"
 )
 
 var version = "dev"

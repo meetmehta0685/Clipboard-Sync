@@ -23,7 +23,7 @@ import (
 
 	"golang.org/x/crypto/chacha20poly1305"
 
-	"github.com/meetmehta/clipsync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
 )
 
 // KeySize is the size of symmetric keys.

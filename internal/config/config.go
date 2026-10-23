@@ -17,8 +17,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/meetmehta/clipsync/internal/crypto"
-	"github.com/meetmehta/clipsync/internal/keystore"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/crypto"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/keystore"
 )
 
 // Device is a member of the sync group.

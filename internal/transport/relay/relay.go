@@ -12,8 +12,8 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/meetmehta/clipsync/internal/protocol"
-	"github.com/meetmehta/clipsync/internal/transport"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport"
 )
 
 // MaxFrame bounds a single WebSocket message. A 256 KiB chunk is ~350 KiB

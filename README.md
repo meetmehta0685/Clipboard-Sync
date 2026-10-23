@@ -29,6 +29,8 @@ KDE Connect and Apple's Universal Clipboard work within the same limits.
 You need Go 1.27+ and, for the phone app, Node 24 with pnpm.
 
 ```sh
+git clone https://github.com/meetmehta0685/Clipboard-Sync.git
+cd Clipboard-Sync
 make all                 # builds web/out and bin/{clipsyncd,relay,clipsync-tray}
 
 # 1. Run a relay somewhere all devices can reach. It also serves the phone app.
@@ -52,7 +54,7 @@ docker build -t clipsync-relay .
 docker run -p 8787:8787 clipsync-relay
 ```
 
-The relay keeps the last 50 clips per room in memory (`-history`, `-room-mb`) so devices that were asleep can catch up. A restart clears that buffer, and devices notice and resync from what's left.
+The relay keeps the last 50 clips per room in memory (`-history`, `-room-mb`, and `-total-mb` across all rooms) so devices that were asleep can catch up. A restart clears that buffer, and devices notice and resync from what's left.
 
 ## Using it
 

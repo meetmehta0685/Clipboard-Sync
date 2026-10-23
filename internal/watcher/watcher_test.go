@@ -3,7 +3,7 @@ package watcher
 import (
 	"testing"
 
-	"github.com/meetmehta/clipsync/internal/clipboard"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/clipboard"
 )
 
 func TestDetectsUserCopies(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/meetmehta/clipsync/internal/protocol"
-	"github.com/meetmehta/clipsync/internal/transport"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport"
 )
 
 // Chaos configures misbehaviour. The zero value is a perfect network.

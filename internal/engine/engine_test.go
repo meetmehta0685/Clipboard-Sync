@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meetmehta/clipsync/internal/clipboard"
-	"github.com/meetmehta/clipsync/internal/config"
-	"github.com/meetmehta/clipsync/internal/crypto"
-	"github.com/meetmehta/clipsync/internal/keystore"
-	"github.com/meetmehta/clipsync/internal/store"
-	"github.com/meetmehta/clipsync/internal/transport"
-	"github.com/meetmehta/clipsync/internal/transport/memnet"
-	"github.com/meetmehta/clipsync/internal/watcher"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/clipboard"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/config"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/crypto"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/keystore"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/store"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport/memnet"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/watcher"
 )
 
 type device struct {

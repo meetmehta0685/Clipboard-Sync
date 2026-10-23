@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"unicode"
 
-	"github.com/meetmehta/clipsync/internal/clipboard"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/clipboard"
 )
 
 // Filter decides whether a local clip may leave the device.

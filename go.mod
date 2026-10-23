@@ -1,4 +1,4 @@
-module github.com/meetmehta/clipsync
+module github.com/meetmehta0685/Clipboard-Sync
 
 go 1.27.3
 

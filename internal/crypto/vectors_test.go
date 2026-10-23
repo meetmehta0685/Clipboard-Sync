@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/meetmehta/clipsync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
 )
 
 // Cross-language test vectors. Go writes testdata/vectors.json (with

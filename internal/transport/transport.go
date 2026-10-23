@@ -8,7 +8,7 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/meetmehta/clipsync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
 )
 
 // Incoming is a message received from a peer.

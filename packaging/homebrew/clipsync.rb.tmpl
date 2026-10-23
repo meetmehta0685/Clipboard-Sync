@@ -1,17 +1,17 @@
-# Rendered by .github/workflows/release.yml into meetmehta/homebrew-tap.
+# Rendered by .github/workflows/release.yml into meetmehta0685/homebrew-tap.
 class Clipsync < Formula
   desc "End-to-end encrypted clipboard sync between your devices"
-  homepage "https://github.com/meetmehta/clipsync"
+  homepage "https://github.com/meetmehta0685/Clipboard-Sync"
   version "{{VERSION}}"
 
   depends_on :macos
 
   on_arm do
-    url "https://github.com/meetmehta/clipsync/releases/download/v{{VERSION}}/clipsync_{{VERSION}}_darwin_arm64.tar.gz"
+    url "https://github.com/meetmehta0685/Clipboard-Sync/releases/download/v{{VERSION}}/clipsync_{{VERSION}}_darwin_arm64.tar.gz"
     sha256 "{{SHA_ARM64}}"
   end
   on_intel do
-    url "https://github.com/meetmehta/clipsync/releases/download/v{{VERSION}}/clipsync_{{VERSION}}_darwin_amd64.tar.gz"
+    url "https://github.com/meetmehta0685/Clipboard-Sync/releases/download/v{{VERSION}}/clipsync_{{VERSION}}_darwin_amd64.tar.gz"
     sha256 "{{SHA_AMD64}}"
   end
 

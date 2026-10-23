@@ -20,13 +20,13 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/meetmehta/clipsync/internal/clipboard"
-	"github.com/meetmehta/clipsync/internal/config"
-	"github.com/meetmehta/clipsync/internal/crypto"
-	"github.com/meetmehta/clipsync/internal/protocol"
-	"github.com/meetmehta/clipsync/internal/store"
-	"github.com/meetmehta/clipsync/internal/transport"
-	"github.com/meetmehta/clipsync/internal/watcher"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/clipboard"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/config"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/crypto"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/store"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/watcher"
 )
 
 // Info strings for sealed messages; mirrored in web/lib/crypto.ts.

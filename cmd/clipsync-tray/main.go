@@ -20,10 +20,10 @@ import (
 	"fyne.io/systray"
 	"rsc.io/qr"
 
-	"github.com/meetmehta/clipsync/internal/client"
-	"github.com/meetmehta/clipsync/internal/config"
-	"github.com/meetmehta/clipsync/internal/daemon"
-	"github.com/meetmehta/clipsync/internal/engine"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/client"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/config"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/daemon"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/engine"
 )
 
 const recentSlots = 8

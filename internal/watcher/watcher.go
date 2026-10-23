@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/meetmehta/clipsync/internal/clipboard"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/clipboard"
 )
 
 // Watcher turns clipboard changes into a stream of local clips.

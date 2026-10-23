@@ -10,16 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meetmehta/clipsync/internal/clipboard"
-	"github.com/meetmehta/clipsync/internal/config"
-	"github.com/meetmehta/clipsync/internal/crypto"
-	"github.com/meetmehta/clipsync/internal/engine"
-	"github.com/meetmehta/clipsync/internal/hub"
-	"github.com/meetmehta/clipsync/internal/keystore"
-	"github.com/meetmehta/clipsync/internal/protocol"
-	"github.com/meetmehta/clipsync/internal/transport"
-	"github.com/meetmehta/clipsync/internal/transport/relay"
-	"github.com/meetmehta/clipsync/internal/watcher"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/clipboard"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/config"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/crypto"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/engine"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/hub"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/keystore"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport/relay"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/watcher"
 )
 
 func quiet() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }

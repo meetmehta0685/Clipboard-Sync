@@ -70,7 +70,7 @@ jobs:
           v="${GITHUB_REF_NAME#v}"
           arm=$(sha256sum "desktop/clipsync_${v}_darwin_arm64.tar.gz" | cut -d' ' -f1)
           amd=$(sha256sum "desktop/clipsync_${v}_darwin_amd64.tar.gz" | cut -d' ' -f1)
-          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/meetmehta/homebrew-tap.git" tap
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/meetmehta0685/homebrew-tap.git" tap
           mkdir -p tap/Formula
           sed -e "s/{{VERSION}}/$v/g" -e "s/{{SHA_ARM64}}/$arm/" -e "s/{{SHA_AMD64}}/$amd/" \
             packaging/homebrew/clipsync.rb.tmpl > tap/Formula/clipsync.rb
