@@ -52,10 +52,13 @@ type Options struct {
 
 // Event is published to API subscribers (tray, TUI, `clipsyncd watch`).
 type Event struct {
-	Type   string      `json:"type"` // "clip" | "devices" | "status"
-	Clip   *store.Clip `json:"clip,omitempty"`
-	Remote bool        `json:"remote,omitempty"`
-	Note   string      `json:"note,omitempty"`
+	Type string      `json:"type"` // "clip" | "devices" | "status"
+	Clip *store.Clip `json:"clip,omitempty"`
+	// Preview is a short description of the clip (Clip.Data never leaves
+	// the daemon's API).
+	Preview string `json:"preview,omitempty"`
+	Remote  bool   `json:"remote,omitempty"`
+	Note    string `json:"note,omitempty"`
 }
 
 type outgoing struct {
@@ -604,10 +607,7 @@ func (e *Engine) record(c store.Clip, remote bool) {
 	}
 	cp := c
 	cp.Data = nil
-	if c.Type == "text" {
-		cp.Data = []byte(c.Preview(200))
-	}
-	e.emit(Event{Type: "clip", Clip: &cp, Remote: remote})
+	e.emit(Event{Type: "clip", Clip: &cp, Remote: remote, Preview: c.Preview(200)})
 }
 
 func (e *Engine) prune() {

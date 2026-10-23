@@ -411,11 +411,7 @@ func (a *app) watch(ctx context.Context) error {
 			if ev.Remote {
 				dir = "← received"
 			}
-			preview := fmt.Sprintf("[%s, %d bytes]", ev.Clip.Type, ev.Clip.Size)
-			if ev.Clip.Type == "text" {
-				preview = string(ev.Clip.Data)
-			}
-			fmt.Printf("%s %s %s\n", ts, dir, preview)
+			fmt.Printf("%s %s %s\n", ts, dir, ev.Preview)
 		default:
 			fmt.Printf("%s %s %s\n", ts, ev.Type, ev.Note)
 		}
