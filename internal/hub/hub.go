@@ -19,7 +19,7 @@ import (
 	"github.com/coder/websocket"
 	"golang.org/x/time/rate"
 
-	"github.com/meetmehta/clipsync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
 )
 
 // Config tunes the relay's limits.
@@ -27,6 +27,7 @@ type Config struct {
 	MaxFrame     int64         // max bytes per WebSocket message
 	RoomHistory  int           // clips (and control messages) kept per room
 	RoomBytes    int64         // max stored ciphertext per room
+	TotalBytes   int64         // max stored ciphertext across all rooms
 	MsgsPerSec   float64       // per-connection message rate
 	BytesPerSec  int           // per-connection byte rate
 	MaxRooms     int           // rooms in memory
@@ -42,6 +43,7 @@ func DefaultConfig() Config {
 		MaxFrame:     1 << 20,
 		RoomHistory:  50,
 		RoomBytes:    64 << 20,
+		TotalBytes:   512 << 20,
 		MsgsPerSec:   200,
 		BytesPerSec:  16 << 20,
 		MaxRooms:     10000,
@@ -57,6 +59,7 @@ type Stats struct {
 	Connections int64 `json:"connections"`
 	Messages    int64 `json:"messages"`
 	Bytes       int64 `json:"bytes"`
+	Stored      int64 `json:"stored_bytes"`
 	Rejected    int64 `json:"rejected"`
 }
 
@@ -69,6 +72,9 @@ type Hub struct {
 	rooms map[string]*room
 
 	conns, msgs, bytes, rejected atomic.Int64
+	// stored is the ciphertext held for replay across all rooms. Anyone can
+	// create rooms, so without a global cap a stranger could fill memory.
+	stored atomic.Int64
 }
 
 // New creates a hub.
@@ -101,6 +107,7 @@ type room struct {
 	seq        uint64
 	chunks     map[string]map[int]*stored
 	bytes      int64
+	total      *atomic.Int64 // the hub's global stored-bytes counter
 	lastActive time.Time
 }
 
@@ -130,7 +137,7 @@ func (h *Hub) Stats() Stats {
 	h.mu.Lock()
 	n := len(h.rooms)
 	h.mu.Unlock()
-	return Stats{Rooms: int64(n), Connections: h.conns.Load(), Messages: h.msgs.Load(), Bytes: h.bytes.Load(), Rejected: h.rejected.Load()}
+	return Stats{Rooms: int64(n), Connections: h.conns.Load(), Messages: h.msgs.Load(), Bytes: h.bytes.Load(), Rejected: h.rejected.Load(), Stored: h.stored.Load()}
 }
 
 // ServeHTTP upgrades to WebSocket and runs one client.
@@ -272,7 +279,7 @@ func (h *Hub) join(hello *protocol.Hello) (*room, error) {
 		if len(h.rooms) >= h.cfg.MaxRooms {
 			return nil, errors.New("relay full")
 		}
-		rm = &room{id: hello.Room, gen: hex.EncodeToString(randomBytes(8)), pair: hello.Pair, created: time.Now(), members: map[*client]struct{}{},
+		rm = &room{total: &h.stored, id: hello.Room, gen: hex.EncodeToString(randomBytes(8)), pair: hello.Pair, created: time.Now(), members: map[*client]struct{}{},
 			chunks: map[string]map[int]*stored{}, lastActive: time.Now()}
 		if !hello.Pair {
 			// Trust on first use: the first member sets the room token and
@@ -310,6 +317,9 @@ func (h *Hub) gcLocked() {
 		idle := now.Sub(rm.lastActive)
 		rm.mu.Unlock()
 		if (rm.pair && now.Sub(rm.created) > h.cfg.PairTTL) || (empty && idle > h.cfg.RoomIdle) || (rm.pair && empty && idle > time.Minute) {
+			rm.mu.Lock()
+			h.stored.Add(-rm.bytes)
+			rm.mu.Unlock()
 			delete(h.rooms, id)
 		}
 	}
@@ -407,20 +417,35 @@ func (rm *room) store(cfg Config, m *protocol.Message, id string) []byte {
 	if rm.pair {
 		limit = 4
 	}
+	// Make space under the global cap from this room's own oldest entries.
+	// If that is not enough, the relay is full: the message is still
+	// forwarded live, just not kept for replay.
+	for len(rm.log) > 0 && rm.total.Load()+s.size > cfg.TotalBytes {
+		rm.evictLocked()
+	}
+	if rm.total.Load()+s.size > cfg.TotalBytes {
+		return raw
+	}
 	rm.log = append(rm.log, s)
-	rm.bytes += s.size
-	for len(rm.log) > limit || (rm.bytes > cfg.RoomBytes && len(rm.log) > 1) {
+	rm.grow(s.size)
+	for len(rm.log) > limit || (len(rm.log) > 1 && rm.bytes > cfg.RoomBytes) {
 		rm.evictLocked()
 	}
 	return raw
 }
 
+// grow adjusts the room's and the hub's stored-byte counters.
+func (rm *room) grow(n int64) {
+	rm.bytes += n
+	rm.total.Add(n)
+}
+
 func (rm *room) evictLocked() {
 	old := rm.log[0]
 	rm.log = rm.log[1:]
-	rm.bytes -= old.size
+	rm.grow(-old.size)
 	for _, ch := range rm.chunks[old.id] {
-		rm.bytes -= ch.size
+		rm.grow(-ch.size)
 	}
 	delete(rm.chunks, old.id)
 }
@@ -449,7 +474,10 @@ func (rm *room) storeChunk(cfg Config, c *protocol.Chunk, raw []byte) {
 	}
 	s := &stored{raw: raw, size: int64(len(raw))}
 	rm.chunks[c.ID][c.Index] = s
-	rm.bytes += s.size
+	if rm.total.Load()+s.size > cfg.TotalBytes {
+		return // relay is full: still forwarded live, just not kept for replay
+	}
+	rm.grow(s.size)
 	for rm.bytes > cfg.RoomBytes && len(rm.log) > 1 {
 		rm.evictLocked()
 	}

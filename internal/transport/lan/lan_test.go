@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meetmehta/clipsync/internal/crypto"
-	"github.com/meetmehta/clipsync/internal/protocol"
-	"github.com/meetmehta/clipsync/internal/transport"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/crypto"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport"
 )
 
 func keys(t *testing.T) Keys {
@@ -106,4 +106,20 @@ func TestOldEpochRejected(t *testing.T) {
 	if a.t.Connected() || b.t.Connected() {
 		t.Fatal("handshake across key epochs succeeded")
 	}
+}
+
+// While a dial is in flight the peer must not count as connected, and
+// sending must not touch the half-open slot (this used to panic).
+func TestSendDuringSlowDial(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ka, kb := keys(t), keys(t)
+	peers := func() []Peer { return []Peer{{"a", ka.Public}, {"b", kb.Public}} }
+	a := start(t, ctx, "a", ka, "room1", peers)
+	a.t.AddPeerAddr("b", "10.255.255.1:9") // unroutable: the dial hangs until timeout
+	time.Sleep(1300 * time.Millisecond)    // let the dial loop start dialing
+	if a.t.Connected() {
+		t.Fatal("reported connected while only dialing")
+	}
+	a.t.Send(ctx, &protocol.Message{Kind: protocol.KindNeed, Need: &protocol.Need{ID: "x"}})
 }

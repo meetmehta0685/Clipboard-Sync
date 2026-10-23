@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http/httptest"
@@ -9,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/meetmehta/clipsync/internal/protocol"
-	"github.com/meetmehta/clipsync/internal/transport/relay"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport/relay"
 )
 
 const testRoom = "0123456789abcdef0123456789abcdef"
@@ -163,5 +164,28 @@ func TestHistoryBounded(t *testing.T) {
 	}
 	if n != 3 {
 		t.Fatalf("replayed %d, want 3", n)
+	}
+}
+
+// Rooms are free to create, so storage is capped across all of them.
+func TestGlobalStorageCap(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.TotalBytes = 4 << 10
+	h := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+	big := make([]byte, 1500)
+	for r := range 5 {
+		room := strings.Repeat(string(rune('a'+r)), 32)
+		c := dial(t, url, &protocol.Hello{Room: room, Token: token, Device: "x"})
+		recv(t, c)
+		for i := range 3 {
+			_ = c.Send(context.Background(), &protocol.Message{Kind: protocol.KindClip, Clip: &protocol.Envelope{ID: fmt.Sprint(r, i), Chunks: 1, Payload: big}})
+		}
+	}
+	time.Sleep(100 * time.Millisecond)
+	if got := h.Stats().Stored; got > cfg.TotalBytes || got == 0 {
+		t.Fatalf("stored %d bytes, cap %d", got, cfg.TotalBytes)
 	}
 }

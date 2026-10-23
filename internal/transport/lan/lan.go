@@ -15,8 +15,8 @@ import (
 
 	"github.com/grandcat/zeroconf"
 
-	"github.com/meetmehta/clipsync/internal/protocol"
-	"github.com/meetmehta/clipsync/internal/transport"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/protocol"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/transport"
 )
 
 // Service is the mDNS service type.
@@ -53,11 +53,12 @@ type Transport struct {
 	opt      Options
 	prologue []byte
 
-	mu    sync.Mutex
-	peers map[string]*conn  // connected, by device ID
-	addrs map[string]string // discovered host:port, by device ID
-	ln    net.Listener
-	ready chan struct{}
+	mu      sync.Mutex
+	peers   map[string]*conn  // connected, by device ID
+	dialing map[string]bool   // dials in flight, by device ID
+	addrs   map[string]string // discovered host:port, by device ID
+	ln      net.Listener
+	ready   chan struct{}
 }
 
 // New creates a LAN transport.
@@ -69,6 +70,7 @@ func New(opt Options) *Transport {
 		opt:      opt,
 		prologue: []byte("clipsync-lan-v1|" + opt.Room),
 		peers:    map[string]*conn{},
+		dialing:  map[string]bool{},
 		addrs:    map[string]string{},
 		ready:    make(chan struct{}),
 	}
@@ -240,7 +242,7 @@ func (t *Transport) dialLoop(ctx context.Context, inbox chan<- transport.Incomin
 		t.mu.Lock()
 		var todo []string
 		for id := range t.addrs {
-			if _, connected := t.peers[id]; !connected && t.opt.DeviceID < id {
+			if _, connected := t.peers[id]; !connected && !t.dialing[id] && t.opt.DeviceID < id {
 				todo = append(todo, id)
 			}
 		}
@@ -263,13 +265,17 @@ func (t *Transport) dial(ctx context.Context, id string, inbox chan<- transport.
 	}
 	t.mu.Lock()
 	addr := t.addrs[id]
-	if _, connected := t.peers[id]; connected {
+	if _, connected := t.peers[id]; connected || t.dialing[id] {
 		t.mu.Unlock()
 		return
 	}
-	// Reserve the slot so the next tick doesn't dial again.
-	t.peers[id] = nil
+	t.dialing[id] = true // so the next tick doesn't dial again
 	t.mu.Unlock()
+	defer func() {
+		t.mu.Lock()
+		delete(t.dialing, id)
+		t.mu.Unlock()
+	}()
 
 	d := net.Dialer{Timeout: 3 * time.Second, KeepAlive: 15 * time.Second}
 	raw, err := d.DialContext(ctx, "tcp", addr)
@@ -280,9 +286,6 @@ func (t *Transport) dial(ctx context.Context, id string, inbox chan<- transport.
 				sc.Close()
 				err = fmt.Errorf("peer at %s claims to be %s", addr, sc.peerID)
 			} else {
-				t.mu.Lock()
-				delete(t.peers, id)
-				t.mu.Unlock()
 				t.serve(ctx, sc, inbox)
 				return
 			}
@@ -291,11 +294,6 @@ func (t *Transport) dial(ctx context.Context, id string, inbox chan<- transport.
 		}
 	}
 	t.opt.Log.Debug("lan dial failed", "addr", addr, "err", err)
-	t.mu.Lock()
-	if t.peers[id] == nil {
-		delete(t.peers, id)
-	}
-	t.mu.Unlock()
 }
 
 // serve runs one authenticated connection until it fails.

@@ -215,6 +215,7 @@ export class SyncClient extends EventTarget {
       clip.url = URL.createObjectURL(new Blob([data as BlobPart], { type: "image/png" }));
     } else {
       const nul = data.indexOf(0);
+      if (nul < 0) return; // malformed: files are "name\0bytes"
       clip.text = decoder.decode(data.subarray(0, nul));
       clip.data = data.subarray(nul + 1);
       clip.url = URL.createObjectURL(new Blob([clip.data as BlobPart]));

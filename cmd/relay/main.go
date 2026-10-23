@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/meetmehta/clipsync/internal/hub"
+	"github.com/meetmehta0685/Clipboard-Sync/internal/hub"
 )
 
 func main() {
@@ -26,6 +26,7 @@ func main() {
 	origins := flag.String("origins", "", "extra allowed browser origins, comma separated (e.g. localhost:3000 for next dev)")
 	history := flag.Int("history", 50, "clips kept per room for offline catch-up")
 	roomMB := flag.Int64("room-mb", 64, "max stored ciphertext per room, in MiB")
+	totalMB := flag.Int64("total-mb", 512, "max stored ciphertext across all rooms, in MiB")
 	tlsCert := flag.String("tls-cert", "", "TLS certificate (or terminate TLS in a reverse proxy)")
 	tlsKey := flag.String("tls-key", "", "TLS key")
 	flag.Parse()
@@ -34,6 +35,7 @@ func main() {
 	cfg := hub.DefaultConfig()
 	cfg.RoomHistory = *history
 	cfg.RoomBytes = *roomMB << 20
+	cfg.TotalBytes = *totalMB << 20
 	if *origins != "" {
 		cfg.Origins = strings.Split(*origins, ",")
 	}
