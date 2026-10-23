@@ -1,0 +1,9 @@
+/bin/
+/dist/
+*.db
+*.db-wal
+*.db-shm
+.DS_Store
+web/node_modules/
+web/.next/
+web/out/
