@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"math/rand/v2"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -286,7 +287,7 @@ func TestFileClipSavedSafely(t *testing.T) {
 		select {
 		case e := <-ev:
 			if e.Note != "" {
-				want := b.st.Settings().DownloadDir + "/evil.txt"
+				want := filepath.Join(b.st.Settings().DownloadDir, "evil.txt")
 				if e.Note != "saved file to "+want {
 					t.Fatalf("got %q, want file saved inside download dir as %s", e.Note, want)
 				}
