@@ -31,19 +31,28 @@ You need Go 1.27+ and, for the phone app, Node 24 with pnpm.
 ```sh
 git clone https://github.com/meetmehta0685/Clipboard-Sync.git
 cd Clipboard-Sync
-make all                 # builds web/out and bin/{clipsyncd,relay,clipsync-tray}
-
-# 1. Run a relay somewhere all devices can reach. It also serves the phone app.
-./bin/relay -addr :8787 -web web/out
-
-# 2. On each computer, point the daemon at it and start syncing.
-clipsyncd config relay_url wss://relay.example.com/ws
-clipsyncd run            # or: brew services start clipsync
-
-# 3. Pair. On a computer that's already set up:
-clipsyncd pair           # shows a QR code and a link
-#    Phone: scan the QR with the camera. Computer: clipsyncd join '<link>'
+make up        # builds what's missing, starts the relay, the daemon and the menu-bar app
 ```
+
+That's it for this computer. Everything runs in the background and `make up` is safe to repeat.
+
+```
+make status    what's running, plus sync state and latency
+make logs      follow all logs (make logs s=daemon for one)
+make down      stop everything make up started
+make restart   down, then up
+make demo      pair two throwaway devices on this machine and check a clip syncs
+```
+
+To add another device, run `bin/clipsyncd pair` here. It shows a QR code and a link. On a phone, scan the QR. On another computer, run `make up` there, then `bin/clipsyncd join '<link>'`.
+
+Other computers need to reach the relay, so point them (and this one) at an address they can all see:
+
+```sh
+bin/clipsyncd config relay_url ws://192.168.1.20:8787/ws   # this machine's LAN IP, or your wss:// host
+```
+
+If that address changes (a new Wi-Fi network), `make up` notices and prints the command to fix it.
 
 **The phone app needs HTTPS.** Browsers only allow clipboard access, installing to the home screen and the share target in a secure context. Put the relay behind TLS (Caddy, a fly.io app, `tailscale serve`, or `-tls-cert/-tls-key`) and use its `wss://` URL as `relay_url`; the pairing QR points the phone at the same host.
 
@@ -105,6 +114,7 @@ Each clip is an `Envelope` (see `internal/protocol`) sent on **every** available
 ## Development
 
 ```sh
+make demo                 # end-to-end smoke test: two devices, one relay, one clip
 make test                 # go vet, go test -race, browser crypto vectors
 cd web && pnpm dev        # PWA dev server (set NEXT_PUBLIC_RELAY_URL=ws://localhost:8787/ws
                           # and run the relay with -origins localhost:3000)

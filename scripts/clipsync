@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+# Run ClipSync on this machine without juggling terminals.
+# Every command is safe to repeat: it looks at what is running and only
+# starts or stops what differs.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUN="$ROOT/.run"
+BIN="$ROOT/bin"
+PORT="${CLIPSYNC_PORT:-8787}"
+
+usage() {
+	cat <<EOF
+Usage: scripts/clipsync <command>
+
+  up       Build if needed, then start the relay, the daemon and (macOS) the tray
+  down     Stop everything 'up' started
+  restart  down, then up
+  status   Show what is running and the daemon's sync status
+  logs     Follow the logs (logs relay | logs daemon | logs tray)
+  demo     Sync a clip between two throwaway devices on this machine
+
+Relay port: \$CLIPSYNC_PORT (default 8787). Logs and pids live in .run/.
+EOF
+}
+
+say() { printf '\033[1m%s\033[0m\n' "$*"; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+build() {
+	mkdir -p "$BIN"
+	(cd "$ROOT" && go build -o bin/clipsyncd ./cmd/clipsyncd && go build -o bin/relay ./cmd/relay)
+	if [[ "$(uname)" == Darwin ]]; then
+		(cd "$ROOT" && go build -o bin/clipsync-tray ./cmd/clipsync-tray)
+	fi
+	if [[ ! -f "$ROOT/web/out/index.html" ]]; then
+		if command -v pnpm >/dev/null; then
+			say "Building the phone app (first run only)"
+			(cd "$ROOT/web" && pnpm install --frozen-lockfile && pnpm build)
+		else
+			echo "note: pnpm not found, so the relay won't serve the phone app (desktop sync still works)"
+		fi
+	fi
+}
+
+# alive NAME: true when the pid in .run/NAME.pid is a live process.
+# A pid file left by a crash or reboot is removed.
+alive() {
+	local f="$RUN/$1.pid"
+	[[ -f "$f" ]] || return 1
+	if kill -0 "$(cat "$f")" 2>/dev/null; then return 0; fi
+	rm -f "$f"
+	return 1
+}
+
+# spawn NAME CMD...: start CMD in the background, logging to .run/NAME.log.
+spawn() {
+	local name="$1"; shift
+	mkdir -p "$RUN"
+	nohup "$@" >>"$RUN/$name.log" 2>&1 &
+	echo $! >"$RUN/$name.pid"
+}
+
+relay_up() { curl -fsS "http://localhost:$PORT/healthz" >/dev/null 2>&1; }
+daemon_up() { "$BIN/clipsyncd" status >/dev/null 2>&1; }
+
+# wait_for DESC CHECK...: poll CHECK for up to 10 seconds.
+wait_for() {
+	local desc="$1"; shift
+	for _ in $(seq 50); do
+		if "$@"; then return 0; fi
+		sleep 0.2
+	done
+	die "$desc did not start; see scripts/clipsync logs"
+}
+
+up() {
+	build
+	if relay_up; then
+		echo "relay   already running on :$PORT"
+	else
+		spawn relay "$BIN/relay" -addr ":$PORT" -web "$ROOT/web/out"
+		wait_for relay relay_up
+		echo "relay   started on :$PORT"
+	fi
+	if daemon_up; then
+		echo "daemon  already running"
+	else
+		spawn daemon "$BIN/clipsyncd" run
+		wait_for daemon daemon_up
+		echo "daemon  started"
+	fi
+	if [[ -x "$BIN/clipsync-tray" ]]; then
+		if alive tray; then
+			echo "tray    already running"
+		else
+			spawn tray "$BIN/clipsync-tray"
+			echo "tray    started (look in the menu bar)"
+		fi
+	fi
+	check_relay_url
+	echo
+	"$BIN/clipsyncd" status
+	echo
+	echo "Pair another device: bin/clipsyncd pair    Stop: make down"
+}
+
+# A relay_url pointing at this machine's old LAN address (after switching
+# networks) leaves the daemon dialing nothing. Say how to fix it.
+check_relay_url() {
+	local url host ip
+	url="$("$BIN/clipsyncd" config | sed -n 's/.*"relay_url": "\(.*\)".*/\1/p')"
+	host="${url#*://}"; host="${host%%[:/]*}"
+	[[ "$host" =~ ^(10|172\.(1[6-9]|2[0-9]|3[01])|192\.168)\. ]] || return 0
+	ip="$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || true)"
+	[[ -n "$ip" && "$host" != "$ip" ]] || return 0
+	echo
+	echo "warning: relay_url is $url, but this machine's address is now $ip."
+	echo "         If the relay runs here, point the daemon at it:"
+	echo "           bin/clipsyncd config relay_url ws://$ip:$PORT/ws && make restart"
+}
+
+stop() {
+	local name="$1"
+	if alive "$name"; then
+		kill "$(cat "$RUN/$name.pid")"
+		rm -f "$RUN/$name.pid"
+		echo "$name stopped"
+	fi
+}
+
+down() {
+	stop tray
+	stop daemon
+	stop relay
+	if daemon_up; then echo "note: a daemon not started by this script is still running (brew services?)"; fi
+	if relay_up; then echo "note: something else is still serving :$PORT"; fi
+}
+
+status() {
+	if relay_up; then echo "relay   running on :$PORT"; else echo "relay   not running"; fi
+	if alive tray; then echo "tray    running"; fi
+	if daemon_up; then
+		echo
+		"$BIN/clipsyncd" status
+	else
+		echo "daemon  not running (start everything with: make up)"
+	fi
+}
+
+logs() {
+	mkdir -p "$RUN"
+	if [[ $# -gt 0 ]]; then
+		touch "$RUN/$1.log"
+		tail -n 50 -f "$RUN/$1.log"
+	else
+		touch "$RUN/relay.log" "$RUN/daemon.log"
+		tail -n 20 -f "$RUN"/*.log
+	fi
+}
+
+# Two isolated devices with file-backed clipboards and their own relay:
+# pair them, copy on one, and check the clip lands on the other.
+demo() {
+	build
+	local port=$((PORT + 10000))
+	DEMO_DIR="$(mktemp -d "${TMPDIR:-/tmp}/clipsync-demo.XXXXXX")"
+	local dir="$DEMO_DIR"
+	DEMO_PIDS=()
+	trap 'kill "${DEMO_PIDS[@]}" 2>/dev/null; wait 2>/dev/null; rm -rf "$DEMO_DIR"' EXIT
+
+	"$BIN/relay" -addr "127.0.0.1:$port" -web "" >"$dir/relay.log" 2>&1 &
+	DEMO_PIDS+=($!)
+	demo_relay() { curl -fsS "http://127.0.0.1:$port/healthz" >/dev/null 2>&1; }
+	wait_for "demo relay" demo_relay
+
+	for d in a b; do
+		mkdir -p "$dir/$d"
+		: >"$dir/$d/clip.txt"
+		cs() { "$BIN/clipsyncd" -home "$dir/$1" -file-keystore "${@:2}"; }
+		cs "$d" config name "demo-$d" >/dev/null
+		cs "$d" config relay_url "ws://127.0.0.1:$port/ws" >/dev/null
+		"$BIN/clipsyncd" -home "$dir/$d" -file-keystore -clipboard-file "$dir/$d/clip.txt" run >"$dir/$d.log" 2>&1 &
+		DEMO_PIDS+=($!)
+	done
+	demo_a() { cs a status >/dev/null 2>&1; }
+	demo_b() { cs b status >/dev/null 2>&1; }
+	wait_for "demo device a" demo_a
+	wait_for "demo device b" demo_b
+	say "Started two devices (a, b) and a relay on :$port"
+
+	"$BIN/clipsyncd" -home "$dir/a" -file-keystore pair >"$dir/pair.out" 2>&1 &
+	DEMO_PIDS+=($!)
+	local link=""
+	for _ in $(seq 50); do
+		link="$(sed -n "s/.*clipsyncd join '\(.*\)'.*/\1/p" "$dir/pair.out")"
+		[[ -n "$link" ]] && break
+		sleep 0.2
+	done
+	[[ -n "$link" ]] || die "no pairing link: $(cat "$dir/pair.out")"
+	cs b join "$link"
+
+	local text="hello from a at $(date +%T)"
+	printf '%s' "$text" >"$dir/a/clip.txt"
+	say "Copied on a: $text"
+	for _ in $(seq 50); do
+		if [[ "$(cat "$dir/b/clip.txt")" == "$text" ]]; then
+			say "Arrived on b. Sync works."
+			cs b history -n 1
+			return 0
+		fi
+		sleep 0.2
+	done
+	echo "--- a.log"; tail -n 20 "$dir/a.log"
+	echo "--- b.log"; tail -n 20 "$dir/b.log"
+	die "clip did not reach b within 10 seconds"
+}
+
+case "${1:-}" in
+	up) up ;;
+	down) down ;;
+	restart) down; up ;;
+	status) status ;;
+	logs) shift; logs "$@" ;;
+	demo) demo ;;
+	build) build ;;
+	""|help|-h|--help) usage ;;
+	*) usage; exit 1 ;;
+esac

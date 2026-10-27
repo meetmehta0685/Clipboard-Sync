@@ -1,4 +1,16 @@
-.PHONY: all build web test test-go test-web vectors dev-relay clean
+.PHONY: help up down restart status logs demo all build web test test-go test-web vectors dev-relay clean
+
+help:
+	@scripts/clipsync help
+	@echo
+	@echo "Also: make all (build everything), make test, make clean"
+
+up down restart status demo:
+	@scripts/clipsync $@
+
+# make logs, or make logs s=relay|daemon|tray
+logs:
+	@scripts/clipsync logs $(s)
 
 all: web build
 

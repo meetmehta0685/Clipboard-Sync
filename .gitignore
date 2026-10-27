@@ -9,3 +9,4 @@ web/.next/
 web/out/
 web/tsconfig.tsbuildinfo
 web/test/js_vectors.json
+/.run/
