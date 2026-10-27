@@ -4,6 +4,8 @@ package daemon
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -26,8 +28,18 @@ import (
 	"github.com/meetmehta0685/Clipboard-Sync/internal/watcher"
 )
 
-// SocketPath is where the local API listens.
-func SocketPath(dir string) string { return filepath.Join(dir, "clipsyncd.sock") }
+// SocketPath is where the local API listens. Unix socket paths are capped at
+// 104 bytes on macOS (108 on Linux), so a deep profile directory gets a
+// socket in the temp dir named after a hash of the directory instead.
+func SocketPath(dir string) string {
+	p := filepath.Join(dir, "clipsyncd.sock")
+	if len(p) < 100 {
+		return p
+	}
+	abs, _ := filepath.Abs(dir)
+	sum := sha256.Sum256([]byte(abs))
+	return filepath.Join(os.TempDir(), "clipsyncd-"+hex.EncodeToString(sum[:6])+".sock")
+}
 
 // Daemon is a running clipsync instance.
 type Daemon struct {

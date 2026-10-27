@@ -38,8 +38,8 @@ func (c Clip) Preview(n int) string {
 		}
 		return s
 	case "file":
-		name, _, _ := bytes.Cut(c.Data, []byte{0})
-		return fmt.Sprintf("[file %s, %d bytes]", name, c.Size)
+		name, body, _ := bytes.Cut(c.Data, []byte{0})
+		return fmt.Sprintf("[file %s, %d bytes]", name, len(body))
 	default:
 		return fmt.Sprintf("[%s, %d bytes]", c.Type, c.Size)
 	}

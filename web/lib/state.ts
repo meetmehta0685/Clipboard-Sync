@@ -42,16 +42,7 @@ function defaultName(): string {
 export function load(): Saved {
   if (isBrowser()) {
     const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const s = decode<Saved>(raw);
-      // Early builds stored the key as `key`, which decode() turns into bytes.
-      const legacy = (s.group as { key?: Uint8Array } | undefined)?.key;
-      if (s.group && !s.group.secret && legacy) {
-        s.group = { secret: b64encode(legacy), epoch: s.group.epoch };
-        save(s);
-      }
-      return s;
-    }
+    if (raw) return decode<Saved>(raw);
   }
   const id = newIdentity();
   const s: Saved = { deviceId: uuid(), name: defaultName(), priv: b64encode(id.priv), devices: [], gen: "", seq: 0, clock: 0 };

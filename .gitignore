@@ -8,3 +8,4 @@ web/node_modules/
 web/.next/
 web/out/
 web/tsconfig.tsbuildinfo
+web/test/js_vectors.json
